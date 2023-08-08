@@ -22,6 +22,8 @@ public class LicenseController {
                                               @PathVariable("licenseId") String licenseId
     ) {
         License license = licenseService.getLicense(licenseId, organizationId);
+
+        // Hateoas (다음 단계에 대한 안내)
         license.add(
                 linkTo(methodOn(LicenseController.class).getLicense(organizationId, license.getLicenseId())).withSelfRel(),
                 linkTo(methodOn(LicenseController.class).createLicense(organizationId, license, null)).withRel("createLicense"),
