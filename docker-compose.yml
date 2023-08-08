@@ -16,6 +16,7 @@
 
 
 # TODO docker-compose up
+# TODO 일시적 실행이므로 실행중 변경된 컨테이너 내용은 저장 안됨(docker commit 참고)
 version: '3'
 
 services:
