@@ -1,28 +1,53 @@
-#version: '3.7'
-#services:
-#  licensingservice:  # 서비스의 레이블 적용
-#    image: licensing-service:0.0.1-SNAPSHOT  # 로컬 저장소에서 해당 이미지 찾은 후 없으면 hub 검색
-#    ports:
-#      - "8080:8080"  # 컨테이너 포트
-#    environment:
-#      - "SPRING_PROFILES_ACTIVE=dev"  # 이미지에 환경 변수 전달
-#    networks:
-#      backend:  # 서비스가 속한 네트워크의 이름 지정
-#        aliases:
-#          - "licenseservice"  # 대체 호스트 이름 지정
-#networks:
-#  backend:  # 디폴트 타입 bridge / backend 라고 명명된 커스텀 네트워크 생성
-#    driver: bridge
-
-
-# TODO docker-compose up
-# TODO 일시적 실행이므로 실행중 변경된 컨테이너 내용은 저장 안됨(docker commit 참고)
-version: '3'
-
+version: '2.1'
 services:
+  database:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB:       "ostock_dev"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/1-init.sql
+      - ./data.sql:/docker-entrypoint-initdb.d/2-data.sql
+    networks:
+      backend:
+        aliases:
+          - "database"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  configserver:
+    image: ostock/configserver:0.0.1-SNAPSHOT
+    ports:
+      - "8071:8071"
+    environment:
+      ENCRYPT_KEY: "fje83Ki8403Iod87dne7Yjsl3THueh48jfuO9j4U2hf64Lo"
+    networks:
+      backend:
+        aliases:
+          - "configserver"
   licensingservice:
-    image: ostock/license-service:0.0.1-SNAPSHOT
+    image: ostock/licensing-service:0.0.2-SNAPSHOT
+    environment:
+      PROFILE: "dev"
+      CONFIGSERVER_URI: "http://configserver:8071"
+      CONFIGSERVER_PORT:   "8071"
+      DATABASESERVER_PORT: "5432"
+      ENCRYPT_KEY: "fje83Ki8403Iod87dne7Yjsl3THueh48jfuO9j4U2hf64Lo" # "IMSYMMETRIC"
+    depends_on:
+      database:
+        condition: service_healthy
+      configserver:
+        condition: service_started
     ports:
       - "8080:8080"
-    environment:
-      - "SPRING_PROFILES_ACTIVE=dev"
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
